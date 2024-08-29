@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"graded-challenge-3-celotip/models"
-	"graded-challenge-3-celotip/utils"
+	"finalp2/models"
+	"finalp2/utils"
 	"net/http"
 	"time"
 
@@ -13,16 +13,18 @@ import (
 )
 
 type UserInput struct {
-	Username    string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 type UserOutput struct {
 	ID      		uint   `json:"user_id"`  
 	Email           string `json:"email"`
-	Username    	string `json:"username"`
 	FullName    	string `json:"full_name"`                  
-	Age 			uint   `json:"age"`
+	Address 		string `json:"address"`
+	Birth_date		string `json:"birth_date"`
+	Contact			string `json:"contact_no"`
+	Deposit			uint   `json:"deposit"`
 }
 
 
@@ -42,22 +44,24 @@ func RegisterUser(c echo.Context) error {
 		return utils.HandleError(c, utils.NewBadRequestError("Invalid input"))
 	}
 
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(user.PasswordHash), 16)
-	user.PasswordHash = string(hashedPassword)
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(user.Password), 16)
+	user.Password = string(hashedPassword)
 
 	db := c.Get("db").(*gorm.DB)
 
 	// Save the user to db
 	if err := db.Create(&user).Error; err != nil {
-		return utils.HandleError(c, utils.NewBadRequestError("Failed to create user. Username or email already exists"))
+		return utils.HandleError(c, utils.NewBadRequestError("Failed to create user."))
 	}
 
 	out := new(UserOutput)
 	out.ID = user.ID
-	out.Username = user.Username
 	out.Email = user.Email
-	out.FullName = user.FullName
-	out.Age = user.Age
+	out.FullName = user.FirstName + " " + user.LastName
+	out.Address = user.Address
+	out.Birth_date = user.Birth_date
+	out.Contact = user.Contact
+	out.Deposit = user.Deposit
 
 	return c.JSON(http.StatusOK, out)
 }
@@ -83,19 +87,19 @@ func LoginUser(c echo.Context) error {
 	}
 
 	dbUser := new(models.User)
-	result := db.Where("username = ?", input.Username).First(&dbUser)
+	result := db.Where("email = ?", input.Email).First(&dbUser)
 	if result.Error != nil {
 		return utils.HandleError(c, utils.NewNotFoundError("Email not found"))
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.PasswordHash), []byte(input.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(input.Password)); err != nil {
 		return utils.HandleError(c, utils.NewBadRequestError("Incorrect password"))
 	}
 
 	// JWT Token
 	claims := jwt.MapClaims{
 		"user_id":    dbUser.ID,
-		"username":      dbUser.Username,
+		"email":      dbUser.Email,
 		"exp":        time.Now().Add(time.Hour * 72).Unix(), // Token expiry
 	}
 

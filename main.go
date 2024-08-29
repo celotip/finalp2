@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"finalp2/config"
 	"finalp2/middlewares"
 	"finalp2/routes"
 	"finalp2/utils"
+	"log"
 	"net/http"
+	"os/signal"
+	"syscall"
 
 	"os"
 
@@ -44,9 +48,9 @@ func customHTTPErrorHandler(err error, c echo.Context, logger *logrus.Logger) {
 	logger.Info("Keluar dari customHTTPErrorHandler")
 }
 
-// @title Social Media
+// @title Book Rental
 // @version 1.0
-// @description Ini adalah API social media untuk membuat post, delete post, comment, dll
+// @description Ini adalah API book rental untuk merental buku dari pilihan buku dan kategori yang tersedia
 // @termOfService http://swagger.io/terms/
 // @contact.name API Support
 // @contact.email support@warungapi.com
@@ -58,13 +62,6 @@ func customHTTPErrorHandler(err error, c echo.Context, logger *logrus.Logger) {
 // @name Authorization
 func main() {
 	db := config.InitDB()
-
-	defer func() {
-		dbInstance, _ := db.DB()
-		_ = dbInstance.Close()
-	}()
-	
-	cfg := config.LoadConfig()
 
 	e := echo.New()
 
@@ -103,31 +100,41 @@ func main() {
 	//middleware logrus
 	e.Use(middlewares.LogrusMiddleware(logger))
 
-	routes.SetupRoutes(e, db, cfg)
+	routes.SetupRoutes(e, db)
+
+	// Handle graceful shutdown
+	go func() {
+		if err := e.Start(":8080"); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("shutting down the server: %v", err)
+		}
+	}()
+
+	// Wait for an interrupt signal to gracefully shutdown the server
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down the server...")
+
+	// Properly shutdown the Echo server
+	if err := e.Shutdown(context.Background()); err != nil {
+		log.Fatalf("Error shutting down the server: %v", err)
+	}
+
+	// Close the database connection
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("Failed to get SQL DB from GORM: %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		log.Fatalf("Failed to close the database connection: %v", err)
+	}
+
+	log.Println("Server shut down gracefully.")
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080" // Default port if not specified
 	}
 	e.Logger.Fatal(e.Start(":"+port))
-
-	// // Mengambil objek database SQL dari GORM
-	// sqlDB, err := db.DB()
-	// if err != nil {
-	// 	log.Fatalf("failed to get database: %v", err)
-	// }
-
-	// // Mengatur pooling koneksi
-	// sqlDB.SetMaxIdleConns(10)                 // Jumlah maksimal koneksi idle
-	// sqlDB.SetMaxOpenConns(100)                // Jumlah maksimal koneksi yang terbuka sekaligus
-	// sqlDB.SetConnMaxLifetime(time.Hour)       // Durasi maksimal sebuah koneksi (dalam jam)
-	// sqlDB.SetConnMaxIdleTime(10 * time.Minute) // Durasi maksimal sebuah koneksi idle (dalam menit)
-
-	// // Menutup koneksi database saat aplikasi berhenti
-	// defer func() {
-	// 	err := sqlDB.Close()
-	// 	if err != nil {
-	// 		log.Fatalf("failed to close database: %v", err)
-	// 	}
-	// }()
 }

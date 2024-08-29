@@ -1,0 +1,6 @@
+time="2024-08-30T00:50:06+07:00" level=error msg="HTTP Error terjadi" error="code=404, message=Not Found" status=404
+time="2024-08-30T00:54:23+07:00" level=error msg="HTTP Error terjadi" error="code=401, message=invalid or expired jwt, internal=Token is expired" status=401
+time="2024-08-30T00:54:26+07:00" level=error msg="HTTP Error terjadi" error="code=401, message=invalid or expired jwt, internal=Token is expired" status=401
+time="2024-08-30T01:10:46+07:00" level=error msg="HTTP Error terjadi" error="code=401, message=invalid or expired jwt, internal=Token is expired" status=401
+time="2024-08-30T01:29:38+07:00" level=error msg="HTTP Error terjadi" error="code=405, message=Method Not Allowed" status=405
+time="2024-08-30T01:29:52+07:00" level=error msg="HTTP Error terjadi" error="code=401, message=invalid or expired jwt, internal=Token is expired" status=401

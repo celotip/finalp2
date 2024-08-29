@@ -1,0 +1,372 @@
+basePath: /
+definitions:
+  controllers.CartInput:
+    properties:
+      book_id:
+        type: integer
+    type: object
+  controllers.OutOrder:
+    properties:
+      books:
+        items:
+          $ref: '#/definitions/models.Book'
+        type: array
+      date:
+        type: string
+      rental_id:
+        type: integer
+      total_price:
+        type: integer
+    type: object
+  controllers.TopupRequest:
+    properties:
+      amount:
+        type: integer
+    type: object
+  controllers.UserInput:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  models.Book:
+    properties:
+      ISBN:
+        type: string
+      author:
+        type: string
+      category:
+        type: string
+      id:
+        type: integer
+      price:
+        type: integer
+      reading_days:
+        type: integer
+      stock:
+        type: integer
+      title:
+        type: string
+    type: object
+  models.User:
+    properties:
+      address:
+        type: string
+      birth_date:
+        type: string
+      contact_no:
+        type: string
+      deposit:
+        type: integer
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: integer
+      jwtToken:
+        type: string
+      last_name:
+        type: string
+      password:
+        type: string
+    type: object
+  utils.APIError:
+    properties:
+      code:
+        type: integer
+      detail:
+        type: string
+      message:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@warungapi.com
+    name: API Support
+  description: Ini adalah API book rental untuk merental buku dari pilihan buku dan
+    kategori yang tersedia
+  title: Book Rental
+  version: "1.0"
+paths:
+  /books:
+    get:
+      description: Get all books stored in the database
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of all books
+          schema:
+            items:
+              $ref: '#/definitions/models.Book'
+            type: array
+        "500":
+          description: Error fetching books
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      security:
+      - ApiKeyAuth: []
+      summary: Get all books
+      tags:
+      - Books
+  /books/{id}:
+    get:
+      description: Get details of a book by its ID
+      parameters:
+      - description: Book ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Book details
+          schema:
+            $ref: '#/definitions/models.Book'
+        "404":
+          description: Book not found
+          schema:
+            $ref: '#/definitions/utils.APIError'
+        "500":
+          description: Error fetching book
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      security:
+      - ApiKeyAuth: []
+      summary: Get book by ID
+      tags:
+      - Books
+  /cart:
+    get:
+      description: Get the current items in the user's cart
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of books in the cart
+          schema:
+            items:
+              $ref: '#/definitions/models.Book'
+            type: array
+        "500":
+          description: Error fetching cart
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      security:
+      - ApiKeyAuth: []
+      summary: Get user's cart
+      tags:
+      - Cart
+    post:
+      consumes:
+      - application/json
+      description: Add a book to the user's cart by its ID
+      parameters:
+      - description: Cart Input
+        in: body
+        name: cartInput
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CartInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Book added to cart
+          schema:
+            $ref: '#/definitions/controllers.CartInput'
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/utils.APIError'
+        "500":
+          description: Failed to add book to cart
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      security:
+      - ApiKeyAuth: []
+      summary: Add book to cart
+      tags:
+      - Cart
+  /cart/{id}:
+    delete:
+      description: Remove a book from the user's cart by its ID
+      parameters:
+      - description: Book ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cart deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Cart not found
+          schema:
+            $ref: '#/definitions/utils.APIError'
+        "500":
+          description: Error deleting cart
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      security:
+      - ApiKeyAuth: []
+      summary: Remove book from cart
+      tags:
+      - Cart
+  /orders:
+    post:
+      description: Create a new order from the items in the user's cart. The cart
+        will be cleared after the order is created.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Order created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Cart is empty, cannot create order
+          schema:
+            $ref: '#/definitions/utils.APIError'
+        "500":
+          description: Failed to create order or order items
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new order
+      tags:
+      - Orders
+  /rentals:
+    get:
+      description: Get all rentals made by the user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of user rentals
+          schema:
+            items:
+              $ref: '#/definitions/controllers.OutOrder'
+            type: array
+        "500":
+          description: Error fetching rentals
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      security:
+      - ApiKeyAuth: []
+      summary: Get user rentals
+      tags:
+      - Rentals
+  /topup:
+    post:
+      consumes:
+      - application/json
+      description: Add a specified amount to the user's deposit
+      parameters:
+      - description: Topup Request
+        in: body
+        name: topupRequest
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.TopupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deposit added successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/utils.APIError'
+        "500":
+          description: Failed to update user
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      security:
+      - ApiKeyAuth: []
+      summary: Add deposit to user account
+      tags:
+      - Users
+  /users/login:
+    post:
+      consumes:
+      - application/json
+      description: Logs in a user with an email and password, returns a JWT token
+      parameters:
+      - description: User Login Input
+        in: body
+        name: userInput
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UserInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: JWT Token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid input or incorrect password
+          schema:
+            $ref: '#/definitions/utils.APIError'
+        "404":
+          description: Email not found
+          schema:
+            $ref: '#/definitions/utils.APIError'
+        "500":
+          description: Failed to generate token
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      summary: Login a user
+      tags:
+      - users
+  /users/register:
+    post:
+      consumes:
+      - application/json
+      description: Registers a new user with an email and password
+      parameters:
+      - description: User Registration Input
+        in: body
+        name: userInput
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UserInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User object containing ID, Email, and other fields
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Invalid input or failed to create user
+          schema:
+            $ref: '#/definitions/utils.APIError'
+      summary: Register a new user
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

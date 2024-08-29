@@ -33,17 +33,3 @@ func InitDB() *gorm.DB {
 
 	return db
 }
-
-type Config struct {
-	XAPIKey string
-}
-
-func LoadConfig() *Config {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
-	return &Config{
-		XAPIKey: os.Getenv("X_API_KEY"),
-	}
-}
