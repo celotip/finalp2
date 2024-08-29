@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"finalp2/helper"
 	"finalp2/models"
 	"finalp2/utils"
 	"fmt"
@@ -239,6 +240,7 @@ type OutOrder struct {
 	OrderID      		uint   `json:"rental_id"`  
 	TotalPrice			uint   `json:"total_price"` 
 	Date    			*time.Time `json:"date"`
+	Status				string `json:"status"`
 	Books				[]models.Book `json:"books"`  
 }
 
@@ -281,6 +283,7 @@ func GetRent(c echo.Context) error {
 		outOrder.OrderID = order.ID
 		outOrder.TotalPrice = order.TotalPrice
 		outOrder.Date = order.RentalDate
+		outOrder.Status = order.RentalStatus
 		outOrder.Books = books
 		out = append(out, outOrder)
 	}
@@ -368,5 +371,76 @@ func AddOrder(c echo.Context) error {
 		"message": "Order created successfully",
 		"order_id": order.ID,
 		"total_price": order.TotalPrice,
+	})
+}
+
+func Pay(c echo.Context) error {
+	db := c.Get("db").(*gorm.DB)
+	userToken := c.Get("user").(*jwt.Token)
+	claims := userToken.Claims.(jwt.MapClaims)
+
+	userID := claims["user_id"].(float64)
+
+	// Extract order ID from the request body or URL parameters
+	orderID, err := strconv.Atoi(c.Param("order_id"))
+	if err != nil {
+		return utils.HandleError(c, utils.NewBadRequestError("Invalid order ID"))
+	}
+
+	// Fetch the order from the database
+	var order models.Rental
+	if err := db.Where("rental_id = ?", orderID).First(&order).Error; err != nil {
+		return utils.HandleError(c, utils.NewNotFoundError("Order not found"))
+	}
+
+	if order.UserID != uint(userID) {
+		return utils.HandleError(c, utils.NewUnauthorizedError("You are not authorized to pay for this order"))
+	}
+
+	// Check if the order has already been paid
+	if order.RentalStatus == "paid" {
+		return utils.HandleError(c, utils.NewBadRequestError("Order is already paid"))
+	}
+
+	// Proceed with the payment process (this is where you integrate with a payment gateway or handle payment logic)
+	// Assuming payment is successful
+
+	// Update the order status to 'paid'
+	order.RentalStatus = "paid"
+	if err := db.Save(&order).Error; err != nil {
+		return utils.HandleError(c, utils.NewInternalError("Failed to update order status to paid"))
+	}
+
+	var user models.User
+	if err := db.Where("user_id = ?", userID).First(&user).Error; err != nil {
+		return utils.HandleError(c, utils.NewNotFoundError("User not found"))
+	}
+
+	var orderItems []models.RentalDetail
+	if err := db.Where("rental_id = ?", orderID).First(&orderItems).Error; err != nil {
+		return utils.HandleError(c, utils.NewInternalError("Error fetching ordered books"))
+	}
+
+	var books []models.Book
+	for _, orderItem := range orderItems {
+		var product models.Book
+		if err := db.Where("book_id = ?", orderItem.BookID).First(&product).Error; err != nil {
+			return utils.HandleError(c, utils.NewInternalError("Error fetching book for cart item"))
+		}
+		books = append(books, product)
+	}
+
+
+	// Optionally, generate an invoice or payment confirmation
+	invoiceRes, err := helper.CreateInvoice(order, user, books)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, "Error while creating invoice")
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "Payment successful",
+		"invoice": invoiceRes,
+		"order_id": order.ID,
+		"status":  order.RentalStatus,
 	})
 }

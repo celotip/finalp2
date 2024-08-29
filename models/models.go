@@ -24,7 +24,7 @@ type Book struct {
 	CategoryID		uint `gorm:"column:category_id" json:"category"`
 	Author     		Author
     Category   		Category
-	ISBN			string `gorm:"column:ISBN" json:"ISBN"`
+	Isbn			string `gorm:"column:isbn" json:"ISBN"`
 	Stock			uint   `gorm:"column:stock" json:"stock"`
 	Price			uint   `gorm:"column:price" json:"price"`
 	ReadingDays		uint   `gorm:"column:reading_days" json:"reading_days"`

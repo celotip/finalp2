@@ -33,7 +33,7 @@ CREATE TABLE Books (
     author_id INT REFERENCES Authors(author_id) ON DELETE SET NULL,
     category_id INT REFERENCES Categories(category_id) ON DELETE SET NULL,
     title VARCHAR(255) NOT NULL,
-    ISBN VARCHAR(13) UNIQUE,
+    isbn VARCHAR(13) UNIQUE,
     stock INT DEFAULT 0,
     price INT NOT NULL,
     reading_days INT DEFAULT 0

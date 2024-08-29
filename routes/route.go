@@ -32,12 +32,13 @@ func SetupRoutes(e *echo.Echo, db *gorm.DB) {
 	})
 
 	e.GET("/books/all", controllers.GetAllBooks, jwtMiddleware)
+	e.GET("/books/:id", controllers.GetBookById, jwtMiddleware)
 	e.POST("/users/topup", controllers.Topup, jwtMiddleware)
 	e.POST("/users/rent", controllers.AddCart, jwtMiddleware)
 	e.GET("/users/carts", controllers.GetCart, jwtMiddleware)
 	e.DELETE("/users/carts", controllers.DeleteCart, jwtMiddleware)
 	e.POST("/users/checkout", controllers.AddOrder, jwtMiddleware)
-	// e.POST("/users/pay", controllers.Pay, jwtMiddleware)
+	e.POST("/users/pay/:order_id", controllers.Pay, jwtMiddleware)
 	// e.POST("/users/return", controllers.Return, jwtMiddleware)
 	e.GET("/users/rent-history", controllers.GetRent, jwtMiddleware)
 }
