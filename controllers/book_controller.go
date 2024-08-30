@@ -374,6 +374,20 @@ func AddOrder(c echo.Context) error {
 	})
 }
 
+// Pay godoc
+// @Summary      Pay for an order
+// @Description  Allows a user to pay for a specific order by ID.
+// @Tags         Payments
+// @Accept       json
+// @Produce      json
+// @Param        order_id  path  int  true  "Order ID"
+// @Security     ApiKeyAuth
+// @Success      200  {object}  map[string]interface{}  "Payment successful"
+// @Failure      400  {object}  map[string]interface{}  "Invalid order ID or order already paid"
+// @Failure      401  {object}  map[string]interface{}  "Unauthorized to pay for this order"
+// @Failure      404  {object}  map[string]interface{}  "Order not found"
+// @Failure      500  {object}  map[string]interface{}  "Internal server error while processing payment"
+// @Router       /pay/{order_id} [post]
 func Pay(c echo.Context) error {
 	db := c.Get("db").(*gorm.DB)
 	userToken := c.Get("user").(*jwt.Token)
@@ -442,5 +456,87 @@ func Pay(c echo.Context) error {
 		"invoice": invoiceRes,
 		"order_id": order.ID,
 		"status":  order.RentalStatus,
+	})
+}
+
+// Return godoc
+// @Summary      Return a book
+// @Description  Allows a user to return a book by ID that they have rented.
+// @Tags         Rentals
+// @Accept       json
+// @Produce      json
+// @Param        id  path  int  true  "Book ID"
+// @Security     ApiKeyAuth
+// @Success      200  {object}  map[string]interface{}  "Book returned successfully"
+// @Failure      400  {object}  map[string]interface{}  "Invalid book ID"
+// @Failure      403  {object}  map[string]interface{}  "Unauthorized to return this book"
+// @Failure      404  {object}  map[string]interface{}  "Rental detail not found"
+// @Failure      500  {object}  map[string]interface{}  "Internal server error while processing return"
+// @Router       /return/{id} [post]
+func Return(c echo.Context) error {
+	db := c.Get("db").(*gorm.DB)
+	userToken := c.Get("user").(*jwt.Token)
+	claims := userToken.Claims.(jwt.MapClaims)
+
+	userID := claims["user_id"].(float64)
+	bookID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return utils.HandleError(c, utils.NewBadRequestError("Invalid book ID"))
+	}
+
+	var rentalDetail models.RentalDetail
+	if err := db.Where("book_id = ? AND returned = FALSE", bookID).First(&rentalDetail).Error; err != nil {
+		return c.JSON(http.StatusNotFound, map[string]interface{}{
+			"error": "Rental detail not found",
+		})
+	}
+
+	// Check if the rental belongs to the user
+	var rental models.Rental
+	if err := db.Where("rental_id = ? AND user_id = ?", rentalDetail.RentalID, uint(userID)).First(&rental).Error; err != nil {
+		return c.JSON(http.StatusForbidden, map[string]interface{}{
+			"error": "You do not have permission to return this book",
+		})
+	}
+
+	// Mark the book as returned
+	rentalDetail.Returned = true
+	if err := db.Save(&rentalDetail).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": "Failed to update rental detail",
+		})
+	}
+
+	// Update the stock of the book
+	var book models.Book
+	if err := db.Where("book_id = ?", bookID).First(&book).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": "Failed to fetch book details",
+		})
+	}
+
+	book.Stock += 1
+	if err := db.Save(&book).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": "Failed to update book stock",
+		})
+	}
+
+	// If all books in the rental are returned, update the rental status
+	var outstandingBooks int64
+	db.Model(&models.RentalDetail{}).Where("rental_id = ? AND returned = FALSE", rentalDetail.RentalID).Count(&outstandingBooks)
+
+	if outstandingBooks == 0 {
+		rental.RentalStatus = "Returned"
+		rental.RentalDate = &time.Time{}
+		if err := db.Save(&rental).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"error": "Failed to update rental status",
+			})
+		}
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"message": "Book returned successfully",
 	})
 }

@@ -39,6 +39,6 @@ func SetupRoutes(e *echo.Echo, db *gorm.DB) {
 	e.DELETE("/users/carts", controllers.DeleteCart, jwtMiddleware)
 	e.POST("/users/checkout", controllers.AddOrder, jwtMiddleware)
 	e.POST("/users/pay/:order_id", controllers.Pay, jwtMiddleware)
-	// e.POST("/users/return", controllers.Return, jwtMiddleware)
+	e.POST("/users/return/:id", controllers.Return, jwtMiddleware)
 	e.GET("/users/rent-history", controllers.GetRent, jwtMiddleware)
 }
